@@ -59,7 +59,7 @@ class Standup(callbacks.Plugin):
         self.__parent.__init__(irc)
         self.tasks = {}
 
-    def check_missing(self, irc, msg, work, command):
+    def handle_task(self, irc, msg, work, command):
         if msg.nick not in self.tasks:
             self.tasks[msg.nick] = {}
         self.tasks[msg.nick][command] = ' '.join(work)
@@ -69,25 +69,21 @@ class Standup(callbacks.Plugin):
             irc.reply("{name}: What are you going to do today?".format(name=msg.nick))
 
     def today(self, irc, msg, args, work):
-        self.check_missing(irc, msg, work, 'today')
-        irc.reply("{name} is doing this today: {0}".format(' '.join(work), name=msg.nick))
+        self.handle_task(irc, msg, work, 'today')
     today = wrap(today, [many('anything')])
 
     def yesterday(self, irc, msg, args, work):
-        self.check_missing(irc, msg, work, 'yesterday')
-        irc.reply("{name} did this yesterday: {0}".format(' '.join(work), name=msg.nick))
+        self.handle_task(irc, msg, work, 'yesterday')
     yesterday = wrap(yesterday, [many('anything')])
 
     def summary(self, irc, msg, args):
         '''Show a summary of things people have said they worked on or will work on.'''
         date = datetime.datetime.now().strftime("%c")
-        messages = []
-        messages.append("{asker}: Here's a summary as of {date}.".format(asker=msg.nick, date=date))
-        for person in self.tasks:
+        irc.reply("Here's a summary as of {date}.".format(date=date))
+        for person, tasks in self.tasks.iteritems():
             for task in ('yesterday', 'today'):
-                message = '{asker}: {person} said, "{task}"'.format(asker=msg.nick, person=person, task=person[task])
-                messages.append(message)
-        irc.reply(messages)
+                message = '{person} said, "{command} {task}"'.format(person=person, command=task.title(), task=tasks[task])
+                irc.reply(message)
     summary = wrap(summary)
 
     def doJoin(self, irc, msg):
